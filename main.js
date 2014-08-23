@@ -183,8 +183,10 @@ var Main = (function () {
 
         document.addEventListener(visibilityChange, function () {
             if (document[hidden]) {
+                console.log("Pause");
                 self.Paused = true;
             } else {
+                console.log("Un-Pause");
                 self.Paused = false;
             }
         }, false);
@@ -648,14 +650,14 @@ var Main = (function () {
         // Draw Blocks
         for (team = 1; team <= 4; team += 1) {
             for (i = 0; i < Main.Team[team].Blocks.length; i += 1) {
-                BufferContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * 16, Main.Team[team].Blocks[i].y * 16);
+                BufferContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Blocks[i].y * self.STATIC.TILE_HEIGHT);
             }
         }
 
         // Draw Mines
         for (team = 1; team <= 4; team += 1) {
             for (i = 0; i < Main.Team[team].Mines.length; i += 1) {
-                BufferContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * 16, Main.Team[team].Mines[i].y * 16);
+                BufferContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Mines[i].y * self.STATIC.TILE_HEIGHT);
             }
         }
 
@@ -944,7 +946,12 @@ var Main = (function () {
                     }
                 }
 
-                context.drawImage(Main.Team[team].Guide, tileNumber * 16, 0, 16, 16, Main.Team[team].Route[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Route[i].y * self.STATIC.TILE_HEIGHT, 16, 16);
+                context.drawImage(Main.Team[team].Guide,
+                                  tileNumber * self.STATIC.TILE_WIDTH,
+                                  0,
+                                  self.STATIC.TILE_WIDTH, self.STATIC.TILE_HEIGHT,
+                                  Main.Team[team].Route[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Route[i].y * self.STATIC.TILE_HEIGHT,
+                                  self.STATIC.TILE_WIDTH, self.STATIC.TILE_HEIGHT);
                 previousTile = currentTile;
             }
         }
