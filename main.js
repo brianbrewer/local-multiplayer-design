@@ -30,8 +30,8 @@ var Main = (function () {
         LEVEL_HEIGHT: 20,
         TILE_WIDTH: 16,
         TILE_HEIGHT: 16,
-        ZOOM_X: 1,
-        ZOOM_Y: 1
+        ZOOM_X: 2,
+        ZOOM_Y: 2
     };
     self.Images = {};
     self.Paused = false;
@@ -686,7 +686,8 @@ var Main = (function () {
         // Draw UI
 
         // Flip Buffer
-        Context.drawImage(Buffer, 0, 0, self.STATIC.SCREEN_WIDTH, self.STATIC.SCREEN_HEIGHT, 0, 0, self.STATIC.SCREEN_WIDTH * self.STATIC.ZOOM_X, self.STATIC.SCREEN_HEIGHT * self.STATIC.ZOOM_Y);
+        //Context.drawImage(Buffer, 0, 0, self.STATIC.SCREEN_WIDTH, self.STATIC.SCREEN_HEIGHT, 0, 0, self.STATIC.SCREEN_WIDTH * self.STATIC.ZOOM_X, self.STATIC.SCREEN_HEIGHT * self.STATIC.ZOOM_Y);
+        self.getZoomed();
     };
 
     self.tintImage = function (imgElement, tintColour) {
@@ -973,6 +974,50 @@ var Main = (function () {
                 currentLevel.Graph.grid[currentLevel.Point["Start" + team].x][currentLevel.Point["Start" + team].y],
                 currentLevel.Graph.grid[currentLevel.Point["End" + team].x][currentLevel.Point["End" + team].y]);
         }
+    };
+
+    // Iterate through image to create zoomed version, by an integer x && y
+    self.getZoomed = function () {
+        var zCanvas,
+            zContext,
+            cData,
+            zData,
+            zX,
+            zY,
+            cPosition,
+            zPosition;
+
+        //@TODO: Replace with self.STATIC values
+        zCanvas = document.createElement("canvas");
+        zCanvas.width = Buffer.width * 2;
+        zCanvas.height = Buffer.height * 2;
+
+        zContext = zCanvas.getContext("2d");
+        zData = zContext.getImageData(0, 0, zCanvas.width, zCanvas.height);
+        cData = BufferContext.getImageData(0, 0, Buffer.width, Buffer.height);
+
+        // Enlarge image pixel by pixel
+        for (zY = 0; zY < Buffer.height; zY += 1) {
+            for (zX = 0; zX < Buffer.width; zX += 1) {
+                cPosition = ((Buffer.width * zY) + zX) * 4;
+
+                // Red, Green, Blue, Alpha
+                zPosition = ((zCanvas.width * zY * 2) + zX * 2) * 4;
+                zData.data[zPosition] = zData.data[zPosition + 4] = cData.data[cPosition];
+                zData.data[zPosition + 1] = zData.data[zPosition + 5] = cData.data[cPosition + 1];
+                zData.data[zPosition + 2] = zData.data[zPosition + 6] = cData.data[cPosition + 2];
+                zData.data[zPosition + 3] = zData.data[zPosition + 7] = cData.data[cPosition + 3];
+
+                // Second Row
+                zPosition += zCanvas.width * 4;
+                zData.data[zPosition] = zData.data[zPosition + 4] = cData.data[cPosition];
+                zData.data[zPosition + 1] = zData.data[zPosition + 5] = cData.data[cPosition + 1];
+                zData.data[zPosition + 2] = zData.data[zPosition + 6] = cData.data[cPosition + 2];
+                zData.data[zPosition + 3] = zData.data[zPosition + 7] = cData.data[cPosition + 3];
+            }
+        }
+
+        Context.putImageData(zData, 0, 0);
     };
 
     self.getCurrentLevel = function () {
