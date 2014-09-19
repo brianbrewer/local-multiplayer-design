@@ -52,6 +52,10 @@ var Data = Data || {};
             src: "img/templateExplosion.png"
         },
         {
+            Name: "Safe",
+            src: "img/safe.png"
+        },
+        {
             Name: "Numbers",
             src: "img/numbers.png"
         }

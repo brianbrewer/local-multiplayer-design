@@ -29,13 +29,13 @@ var Main = (function () {
         LEVEL_WIDTH: 20,
         LEVEL_HEIGHT: 20,
         TILE_WIDTH: 16,
-        TILE_HEIGHT: 16,
-        ZOOM_X: 2,
-        ZOOM_Y: 2
+        TILE_HEIGHT: 16
     };
     self.Images = {};
     self.Paused = false;
     self.Explosions = [];
+    self.Layers = {};
+    self.ItemDraw = true;
     self.Team = {
         1: {
             Colour: "#ff0000",
@@ -146,28 +146,44 @@ var Main = (function () {
                 };
         }());
 
+        // Create layered canvas'
+        self.Layers.Level = document.createElement("canvas");       // Hardly Ever
+        self.Layers.Level.width = self.STATIC.SCREEN_WIDTH;
+        self.Layers.Level.height = self.STATIC.SCREEN_HEIGHT;
+
+        self.Layers.Items = document.createElement("canvas");       // On item use
+        self.Layers.Items.width = self.STATIC.SCREEN_WIDTH;
+        self.Layers.Items.height = self.STATIC.SCREEN_HEIGHT;
+
+        self.Layers.Entities = document.createElement("canvas");    // Every Frame
+        self.Layers.Entities.width = self.STATIC.SCREEN_WIDTH;
+        self.Layers.Entities.height = self.STATIC.SCREEN_HEIGHT;
+
+        self.Layers.Interface = document.createElement("canvas");   // UI Changes
+        self.Layers.Interface.width = self.STATIC.SCREEN_WIDTH;
+        self.Layers.Interface.height = self.STATIC.SCREEN_HEIGHT;
+
+        // Set layer z-index
+        self.Layers.Level.style.zIndex = 0;
+        self.Layers.Items.style.zIndex = 1;
+        self.Layers.Entities.style.zIndex = 2;
+        self.Layers.Interface.style.zIndex = 3;
+
+        // Add to Page
+        document.body.appendChild(self.Layers.Level);
+        document.body.appendChild(self.Layers.Items);
+        document.body.appendChild(self.Layers.Entities);
+        document.body.appendChild(self.Layers.Interface);
+
+        // Get context
+        self.Layers.LevelContext = self.Layers.Level.getContext("2d");
+        self.Layers.ItemsContext = self.Layers.Items.getContext("2d");
+        self.Layers.EntitiesContext = self.Layers.Entities.getContext("2d");
+        self.Layers.InterfaceContext = self.Layers.Interface.getContext("2d");
+
         // Setup Canvas etc.
         Canvas = document.createElement("canvas");
         Buffer = document.createElement("canvas");
-
-        Canvas.width = self.STATIC.SCREEN_WIDTH * self.STATIC.ZOOM_X;
-        Canvas.height = self.STATIC.SCREEN_HEIGHT * self.STATIC.ZOOM_Y;
-
-        Buffer.width = self.STATIC.SCREEN_WIDTH;
-        Buffer.height = self.STATIC.SCREEN_HEIGHT;
-
-        Context = Canvas.getContext("2d");
-        BufferContext = Buffer.getContext("2d");
-
-        Context.imageSmoothingEnabled = false;
-        Context.webkitimageSmoothingEnabled = false;
-        Context.mozimageSmoothingEnabled = false;
-
-        BufferContext.imageSmoothingEnabled = false;
-        BufferContext.webkitimageSmoothingEnabled = false;
-        BufferContext.mozimageSmoothingEnabled = false;
-
-        document.body.appendChild(Canvas);
 
         // Setup Pausing on change tab and other stuffs
         if (typeof document.hidden !== "undefined") {
@@ -229,6 +245,7 @@ var Main = (function () {
                 }
             }
         }
+        calculateGuide();
 
         // Attach InputHandler
         Main.InputHandler.AttachKeys(window, function (key) {
@@ -236,7 +253,6 @@ var Main = (function () {
                 var blockX,
                     blockY,
                     botTeam,
-                    team,
                     i;
 
                 for (team = 1; team <= 4; team += 1) {
@@ -246,7 +262,7 @@ var Main = (function () {
                         blockY = Math.floor(Main.Team[team].Player.x / self.STATIC.TILE_WIDTH);
 
                         // Place Block and add to weight graph
-                        if (currentLevel.Data[blockX][blockY] < 2) {
+                        if (currentLevel.Data[blockX][blockY] === 1) {
                             Main.Team[team].Blocks.push({
                                 x: blockY,
                                 y: blockX
@@ -261,6 +277,7 @@ var Main = (function () {
                                 Main.Team[botTeam].Bots[i].rr = true;
                             }
                         }
+                        self.ItemDraw = true;
                     }
 
                     // Place Mines
@@ -269,12 +286,15 @@ var Main = (function () {
                         blockY = Math.floor(Main.Team[team].Player.x / self.STATIC.TILE_WIDTH);
 
                         // Create new mine object
-                        Main.Team[team].Mines.push({
-                            x: blockY,
-                            y: blockX,
-                            t: 3000,
-                            detonate: false
-                        });
+                        if (currentLevel.Data[blockX][blockY] === 1) {
+                            Main.Team[team].Mines.push({
+                                x: blockY,
+                                y: blockX,
+                                t: 3000,
+                                detonate: false
+                            });
+                            self.ItemDraw = true;
+                        }
                     }
                 }
             }
@@ -294,7 +314,7 @@ var Main = (function () {
                     blockY = Math.floor(Main.Team[controller + 1].Player.x / self.STATIC.TILE_WIDTH);
 
                     // Place Block and add to weight graph
-                    if (currentLevel.Data[blockX][blockY] < 2) {
+                    if (currentLevel.Data[blockX][blockY] === 1) {
                         Main.Team[controller + 1].Blocks.push({
                             x: blockY,
                             y: blockX
@@ -309,6 +329,8 @@ var Main = (function () {
                             Main.Team[botTeam].Bots[i].rr = true;
                         }
                     }
+
+                    self.ItemDraw = true;
                 }
 
                 // Place Mines
@@ -317,23 +339,31 @@ var Main = (function () {
                     blockY = Math.floor(Main.Team[controller + 1].Player.x / self.STATIC.TILE_WIDTH);
 
                     // Create new mine object
-                    Main.Team[controller + 1].Mines.push({
-                        x: blockY,
-                        y: blockX,
-                        t: 3000
-                    });
+                    if (currentLevel.Data[blockX][blockY] === 1) {
+                        Main.Team[controller + 1].Mines.push({
+                            x: blockY,
+                            y: blockX,
+                            t: 3000
+                        });
+                        self.ItemDraw = true;
+                    }
                 }
             }
         });
 
         // Place Players
         for (team = 1; team <= 4; team += 1) {
-            Main.Team[team].Player.x = currentLevel.Point["Start" + team].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
-            Main.Team[team].Player.y = currentLevel.Point["Start" + team].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
+            //Main.Team[team].Player.x = currentLevel.Point["Start" + team].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
+            Main.Team[team].Player.x = Main.Team[team].Route[0].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
+            //Main.Team[team].Player.y = currentLevel.Point["Start" + team].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
+            Main.Team[team].Player.y = Main.Team[team].Route[0].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
         }
 
+
+        // Draw Level (Only really once)
+        drawLevel(self.Layers.LevelContext, currentLevel.Data);
+
         // Begin Update Loop
-        calculateGuide();
         previousTime = Date.now();
         window.requestAnimFrame(self.update);
     };
@@ -375,7 +405,6 @@ var Main = (function () {
         }
         previousTime = currentTime;
 
-
         if (!self.Paused) {
             // Character Movement
             for (player = 1; player <= 4; player += 1) {
@@ -383,8 +412,8 @@ var Main = (function () {
                 vx = vy = 0;
                 if (Main.ControllerHandler.Gamepads[player - 1]) {
                     // Controller
-                    vx = Math.round(Main.ControllerHandler.Gamepads[player - 1].axes[1]) * 48 / 1000 * delta;
-                    vy = Math.round(Main.ControllerHandler.Gamepads[player - 1].axes[0]) * 48 / 1000 * delta;
+                    vx = Math.round(Main.ControllerHandler.Gamepads[player - 1].axes[0]) * 48 / 1000 * delta;
+                    vy = Math.round(Main.ControllerHandler.Gamepads[player - 1].axes[1]) * 48 / 1000 * delta;
                     Main.Team[player].Player.r = 270 - Math.atan2(Main.ControllerHandler.Gamepads[player - 1].axes[0], -Main.ControllerHandler.Gamepads[player - 1].axes[1]) * 180 / Math.PI;
                 } else {
                     // Keyboard
@@ -402,17 +431,22 @@ var Main = (function () {
                     }
                 }
                 //Collision
-                //@TODO: Place players at the first notch on the teams guide
-                //@TODO: Avoid characters leaving level / moving too far
                 //@TODO: Take into consideration the existence of blocks from other players
                 currentTileX = Math.floor(Main.Team[player].Player.x / Main.STATIC.TILE_WIDTH);
                 currentTileY = Math.floor(Main.Team[player].Player.y / Main.STATIC.TILE_HEIGHT);
                 playerTileX = Math.floor((Main.Team[player].Player.x + vx * 48 / 1000 * delta) / Main.STATIC.TILE_WIDTH);
                 playerTileY = Math.floor((Main.Team[player].Player.y + vy * 48 / 1000 * delta) / Main.STATIC.TILE_HEIGHT);
-                if (!(currentLevel.Data[currentTileY][currentTileX] === 1 && currentLevel.Data[currentTileY][playerTileX] !== 1)) {
+
+                // Check against blocks
+                //@TODO: Finish
+
+                // Check against tiles
+                if (currentLevel.Data[currentTileY][playerTileX] === 1 ||
+                        currentLevel.Data[currentTileY][playerTileX] === 10) {
                     Main.Team[player].Player.x += vx * 48 / 1000 * delta;
                 }
-                if (!(currentLevel.Data[currentTileY][currentTileX] === 1 && currentLevel.Data[playerTileY][currentTileX] !== 1)) {
+                if (currentLevel.Data[playerTileY][currentTileX] === 1 ||
+                        currentLevel.Data[playerTileY][currentTileX] === 10) {
                     Main.Team[player].Player.y += vy * 48 / 1000 * delta;
                 }
                 if (!(vx === 0 && vy === 0)) {
@@ -526,8 +560,8 @@ var Main = (function () {
                     }
                     if (exploded) {
                         Main.Team[team].Mines.splice(i, 1);
+                        self.ItemDraw = true;
                         break;
-
                     }
 
                     // Explode
@@ -627,6 +661,7 @@ var Main = (function () {
 
                         // Remove self
                         Main.Team[team].Mines.splice(i, 1);
+                        self.ItemDraw = true;
                     }
                 }
             }
@@ -636,58 +671,58 @@ var Main = (function () {
         }
     };
 
-    // Draw everything to buffer, then flip onto screen canvas
+    // Draw each individual layer depending on update rate to save rendering & logic cycles
     self.draw = function () {
         var team,
             i;
 
-        // Draw Level
-        drawLevel(BufferContext, currentLevel.Data);
+        if (self.ItemDraw) {
+            // Clear Layer
+            self.Layers.ItemsContext.clearRect(0, 0, self.Layers.Items.width, self.Layers.Items.width);
 
-        // Draw Guide
-        drawGuide(BufferContext, currentLevel.Data);
+            // Draw Guide
+            drawGuide(self.Layers.ItemsContext, currentLevel.Data);
 
-        // Draw Blocks
-        for (team = 1; team <= 4; team += 1) {
-            for (i = 0; i < Main.Team[team].Blocks.length; i += 1) {
-                BufferContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Blocks[i].y * self.STATIC.TILE_HEIGHT);
+            // Draw Blocks
+            for (team = 1; team <= 4; team += 1) {
+                for (i = 0; i < Main.Team[team].Blocks.length; i += 1) {
+                    self.Layers.ItemsContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Blocks[i].y * self.STATIC.TILE_HEIGHT);
+                }
             }
+
+            // Draw Mines
+            for (team = 1; team <= 4; team += 1) {
+                for (i = 0; i < Main.Team[team].Mines.length; i += 1) {
+                    self.Layers.ItemsContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Mines[i].y * self.STATIC.TILE_HEIGHT);
+                }
+            }
+
+            self.ItemDraw = false;
         }
 
-        // Draw Mines
-        for (team = 1; team <= 4; team += 1) {
-            for (i = 0; i < Main.Team[team].Mines.length; i += 1) {
-                BufferContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Mines[i].y * self.STATIC.TILE_HEIGHT);
-            }
-        }
+        // Clear Entities Layer
+        self.Layers.EntitiesContext.clearRect(0, 0, self.Layers.Entities.width, self.Layers.Entities.width);
 
         // Draw Bots
         for (team = 1; team <= 4; team += 1) {
             for (i = 0; i < Main.Team[team].Bots.length; i += 1) {
-                drawRotatedImage(BufferContext, Main.Team[team].Bot_Template, Main.Team[team].Bots[i].x, Main.Team[team].Bots[i].y, Main.Team[team].Bots[i].r);
+                drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Bot_Template, Main.Team[team].Bots[i].x, Main.Team[team].Bots[i].y, Main.Team[team].Bots[i].r);
             }
         }
 
         // Draw Characters
         for (team = 1; team <= 4; team += 1) {
-            drawRotatedImage(BufferContext, Main.Team[team].Character_Template, Math.floor(Main.Team[team].Player.x), Math.floor(Main.Team[team].Player.y), Main.Team[team].Player.r);
+            drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Character_Template, Math.floor(Main.Team[team].Player.x), Math.floor(Main.Team[team].Player.y), Main.Team[team].Player.r);
         }
 
         // Draw Explosions
         for (i = 0; i < self.Explosions.length; i += 1) {
-            BufferContext.drawImage(Main.Team[self.Explosions[i].team].Explosion_Template,
+            self.Layers.EntitiesContext.drawImage(Main.Team[self.Explosions[i].team].Explosion_Template,
                                     self.Explosions[i].x * self.STATIC.TILE_WIDTH - Main.Team[self.Explosions[i].team].Explosion_Template.width / 2 + self.STATIC.TILE_WIDTH / 2,
                                     self.Explosions[i].y * self.STATIC.TILE_HEIGHT - Main.Team[self.Explosions[i].team].Explosion_Template.height / 2 + self.STATIC.TILE_HEIGHT / 2);
         }
 
-        // Draw Points
-        // Use image text
-
-        // Draw UI
-
-        // Flip Buffer
-        //Context.drawImage(Buffer, 0, 0, self.STATIC.SCREEN_WIDTH, self.STATIC.SCREEN_HEIGHT, 0, 0, self.STATIC.SCREEN_WIDTH * self.STATIC.ZOOM_X, self.STATIC.SCREEN_HEIGHT * self.STATIC.ZOOM_Y);
-        self.getZoomed();
+        // Draw Interface
     };
 
     self.tintImage = function (imgElement, tintColour) {
@@ -799,6 +834,7 @@ var Main = (function () {
                 case 0:
                     levelGraph[tileX][tileY] = 0;
                     break;
+                case 10:
                 case 1:
                     levelGraph[tileX][tileY] = 1;
                     break;
@@ -889,6 +925,9 @@ var Main = (function () {
                 case 9:
                     context.drawImage(Main.Team[4].Guide_End_Template, drawX, drawY);
                     break;
+                case 10:
+                    context.drawImage(Main.Images.Safe, drawX, drawY);
+                    break;
                 }
             }
         }
@@ -974,50 +1013,6 @@ var Main = (function () {
                 currentLevel.Graph.grid[currentLevel.Point["Start" + team].x][currentLevel.Point["Start" + team].y],
                 currentLevel.Graph.grid[currentLevel.Point["End" + team].x][currentLevel.Point["End" + team].y]);
         }
-    };
-
-    // Iterate through image to create zoomed version, by an integer x && y
-    self.getZoomed = function () {
-        var zCanvas,
-            zContext,
-            cData,
-            zData,
-            zX,
-            zY,
-            cPosition,
-            zPosition;
-
-        //@TODO: Replace with self.STATIC values
-        zCanvas = document.createElement("canvas");
-        zCanvas.width = Buffer.width * 2;
-        zCanvas.height = Buffer.height * 2;
-
-        zContext = zCanvas.getContext("2d");
-        zData = zContext.getImageData(0, 0, zCanvas.width, zCanvas.height);
-        cData = BufferContext.getImageData(0, 0, Buffer.width, Buffer.height);
-
-        // Enlarge image pixel by pixel
-        for (zY = 0; zY < Buffer.height; zY += 1) {
-            for (zX = 0; zX < Buffer.width; zX += 1) {
-                cPosition = ((Buffer.width * zY) + zX) * 4;
-
-                // Red, Green, Blue, Alpha
-                zPosition = ((zCanvas.width * zY * 2) + zX * 2) * 4;
-                zData.data[zPosition] = zData.data[zPosition + 4] = cData.data[cPosition];
-                zData.data[zPosition + 1] = zData.data[zPosition + 5] = cData.data[cPosition + 1];
-                zData.data[zPosition + 2] = zData.data[zPosition + 6] = cData.data[cPosition + 2];
-                zData.data[zPosition + 3] = zData.data[zPosition + 7] = cData.data[cPosition + 3];
-
-                // Second Row
-                zPosition += zCanvas.width * 4;
-                zData.data[zPosition] = zData.data[zPosition + 4] = cData.data[cPosition];
-                zData.data[zPosition + 1] = zData.data[zPosition + 5] = cData.data[cPosition + 1];
-                zData.data[zPosition + 2] = zData.data[zPosition + 6] = cData.data[cPosition + 2];
-                zData.data[zPosition + 3] = zData.data[zPosition + 7] = cData.data[cPosition + 3];
-            }
-        }
-
-        Context.putImageData(zData, 0, 0);
     };
 
     self.getCurrentLevel = function () {

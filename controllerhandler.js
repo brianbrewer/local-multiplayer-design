@@ -137,6 +137,5 @@ var Main = Main || {};
         }
     };
 
-
     Main.ControllerHandler = Main.ControllerHandler || ControllerHandler;
 }());
