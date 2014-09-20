@@ -1,4 +1,4 @@
-/*jslint browser: true, devel: true */
+/*jslint browser: true, devel: true, todo: true*/
 /*global Data, Graph, astar */
 var Main = (function () {
     "use strict";
@@ -7,14 +7,8 @@ var Main = (function () {
         loadImages,
         colourImages,
         convertLevel,
-        colourTemplate,
         hexToRGB,
         drawRotatedImage,
-        requestAnimationFrame,
-        Canvas,
-        Context,
-        Buffer,
-        BufferContext,
         drawLevel,
         drawGuide,
         currentLevel,
@@ -38,7 +32,7 @@ var Main = (function () {
     self.ItemDraw = true;
     self.Team = {
         1: {
-            Colour: "#ff0000",
+            Colour: "#cccccc",
             Player: {
                 x: 0,
                 y: 0,
@@ -58,7 +52,7 @@ var Main = (function () {
             }
         },
         2: {
-            Colour: "#00ff00",
+            Colour: "#ff00ff",
             Player: {
                 x: 0,
                 y: 0,
@@ -78,7 +72,7 @@ var Main = (function () {
             }
         },
         3: {
-            Colour: "#0000ff",
+            Colour: "#00ffff",
             Player: {
                 x: 0,
                 y: 0,
@@ -98,7 +92,7 @@ var Main = (function () {
             }
         },
         4: {
-            Colour: "#ffff00",
+            Colour: "#ff8c00",
             Player: {
                 x: 0,
                 y: 0,
@@ -181,18 +175,14 @@ var Main = (function () {
         self.Layers.EntitiesContext = self.Layers.Entities.getContext("2d");
         self.Layers.InterfaceContext = self.Layers.Interface.getContext("2d");
 
-        // Setup Canvas etc.
-        Canvas = document.createElement("canvas");
-        Buffer = document.createElement("canvas");
-
         // Setup Pausing on change tab and other stuffs
-        if (typeof document.hidden !== "undefined") {
+        if (document.hidden === undefined) {
             hidden = "hidden";
             visibilityChange = "visibilitychange";
-        } else if (typeof document.mozHidden !== "undefined") { // Firefox up to v17
+        } else if (document.mozHidden !== undefined) { // Firefox up to v17
             hidden = "mozHidden";
             visibilityChange = "mozvisibilitychange";
-        } else if (typeof document.webkitHidden !== "undefined") { // Chrome up to v32, Android up to v4.4, Blackberry up to v10
+        } else if (document.webkitHidden !== undefined) { // Chrome up to v32, Android up to v4.4, Blackberry up to v10
             hidden = "webkitHidden";
             visibilityChange = "webkitvisibilitychange";
         }
@@ -353,12 +343,9 @@ var Main = (function () {
 
         // Place Players
         for (team = 1; team <= 4; team += 1) {
-            //Main.Team[team].Player.x = currentLevel.Point["Start" + team].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
             Main.Team[team].Player.x = Main.Team[team].Route[0].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
-            //Main.Team[team].Player.y = currentLevel.Point["Start" + team].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
             Main.Team[team].Player.y = Main.Team[team].Route[0].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
         }
-
 
         // Draw Level (Only really once)
         drawLevel(self.Layers.LevelContext, currentLevel.Data);
@@ -377,8 +364,6 @@ var Main = (function () {
             l,
             currentTileX,
             currentTileY,
-            destinationX,
-            destinationY,
             player,
             playerTileX,
             playerTileY,
@@ -391,9 +376,11 @@ var Main = (function () {
             mineTileX,
             mineTileY,
             exploded,
-            prevRot,
             vx,
-            vy;
+            vy,
+            currentBlock,
+            destinationXBlock,
+            destinationYBlock;
 
         // Next Update
         window.requestAnimFrame(self.update);
@@ -408,7 +395,6 @@ var Main = (function () {
         if (!self.Paused) {
             // Character Movement
             for (player = 1; player <= 4; player += 1) {
-                prevRot = Main.Team[player].Player.r;
                 vx = vy = 0;
                 if (Main.ControllerHandler.Gamepads[player - 1]) {
                     // Controller
@@ -438,15 +424,31 @@ var Main = (function () {
                 playerTileY = Math.floor((Main.Team[player].Player.y + vy * 48 / 1000 * delta) / Main.STATIC.TILE_HEIGHT);
 
                 // Check against blocks
-                //@TODO: Finish
+                currentBlock = destinationXBlock = destinationYBlock = null;
+                for (j = 1; j <= 4; j += 1) {
+                    for (k = 0; k < Main.Team[j].Blocks.length; k += 1) {
+                        if (Main.Team[j].Blocks[k].x === playerTileX && Main.Team[j].Blocks[k].y === currentTileY) {
+                            destinationXBlock = Main.Team[j].Blocks[k];
+                        }
+                        if (Main.Team[j].Blocks[k].x === currentTileX && Main.Team[j].Blocks[k].y === playerTileY) {
+                            destinationYBlock = Main.Team[j].Blocks[k];
+                        }
+                        if (Main.Team[j].Blocks[k].x === currentTileX && Main.Team[j].Blocks[k].y === currentTileY) {
+                            currentBlock = Main.Team[j].Blocks[k];
+                        }
+                    }
+                    if (!!currentBlock && !!destinationXBlock && !!destinationYBlock) { break; }
+                }
 
-                // Check against tiles
-                if (currentLevel.Data[currentTileY][playerTileX] === 1 ||
-                        currentLevel.Data[currentTileY][playerTileX] === 10) {
+                // Collision checking taking into account players blocks
+                if (((currentBlock && !destinationXBlock) || (!currentBlock && !destinationXBlock) || (currentBlock && destinationXBlock && currentBlock.x === destinationXBlock.x)) &&
+                        (currentLevel.Data[currentTileY][playerTileX] === 1 ||
+                        currentLevel.Data[currentTileY][playerTileX] === 10)) {
                     Main.Team[player].Player.x += vx * 48 / 1000 * delta;
                 }
-                if (currentLevel.Data[playerTileY][currentTileX] === 1 ||
-                        currentLevel.Data[playerTileY][currentTileX] === 10) {
+                if (((currentBlock && !destinationYBlock) || (!currentBlock && !destinationYBlock) || (currentBlock && destinationYBlock && currentBlock.y === destinationYBlock.y)) &&
+                        (currentLevel.Data[playerTileY][currentTileX] === 1 ||
+                        currentLevel.Data[playerTileY][currentTileX] === 10)) {
                     Main.Team[player].Player.y += vy * 48 / 1000 * delta;
                 }
                 if (!(vx === 0 && vy === 0)) {
@@ -618,13 +620,12 @@ var Main = (function () {
                                         (playerTileX === mineTileX && playerTileY === mineTileY + 1)) {
 
                                 // Reset Players
-                                Main.Team[j].Player.x = currentLevel.Point["Start" + j].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
-                                Main.Team[j].Player.y = currentLevel.Point["Start" + j].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
+                                Main.Team[team].Player.x = Main.Team[team].Route[0].x * self.STATIC.TILE_WIDTH + self.STATIC.TILE_WIDTH / 2;
+                                Main.Team[team].Player.y = Main.Team[team].Route[0].y * self.STATIC.TILE_HEIGHT + self.STATIC.TILE_HEIGHT / 2;
                             }
                         }
 
                         // Remove Nearby Bots
-                        //@TODO: Finish
                         for (j = 1; j <= 4; j += 1) {
                             for (k = 0; k < Main.Team[j].Bots.length; k += 1) {
                                 botTileX = Math.floor(Main.Team[j].Bots[k].x / self.STATIC.TILE_WIDTH);
@@ -730,7 +731,6 @@ var Main = (function () {
             context,
             map,
             p,
-            len,
             colour,
             nImage;
 
@@ -933,9 +933,8 @@ var Main = (function () {
         }
     };
 
-    drawGuide = function (context, level) {
-        var result,
-            previousTile,
+    drawGuide = function (context) {
+        var previousTile,
             currentTile,
             nextTile,
             tileNumber,
@@ -1002,10 +1001,7 @@ var Main = (function () {
     };
 
     calculateGuide = function () {
-        var team,
-            i,
-            currentTileX,
-            currentTileY;
+        var team;
 
         // Level Pathing
         for (team = 1; team <= 4; team += 1) {
