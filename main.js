@@ -11,6 +11,9 @@ var Main = (function () {
         drawRotatedImage,
         drawLevel,
         drawGuide,
+        drawItems,
+        drawEntities,
+        drawInterface,
         currentLevel,
         previousTime,
         currentTime,
@@ -30,9 +33,12 @@ var Main = (function () {
     self.Explosions = [];
     self.Layers = {};
     self.ItemDraw = true;
+    self.InterfaceDraw = true;
     self.Team = {
         1: {
             Colour: "#cccccc",
+            Score: 45,
+            TargetScore: 60,
             Player: {
                 x: 0,
                 y: 0,
@@ -53,6 +59,8 @@ var Main = (function () {
         },
         2: {
             Colour: "#ff00ff",
+            Score: 0,
+            TargetScore: 60,
             Player: {
                 x: 0,
                 y: 0,
@@ -73,6 +81,8 @@ var Main = (function () {
         },
         3: {
             Colour: "#00ffff",
+            Score: 0,
+            TargetScore: 60,
             Player: {
                 x: 0,
                 y: 0,
@@ -93,6 +103,8 @@ var Main = (function () {
         },
         4: {
             Colour: "#ff8c00",
+            Score: 0,
+            TargetScore: 60,
             Player: {
                 x: 0,
                 y: 0,
@@ -674,56 +686,20 @@ var Main = (function () {
 
     // Draw each individual layer depending on update rate to save rendering & logic cycles
     self.draw = function () {
-        var team,
-            i;
-
+        // Draw items when required
         if (self.ItemDraw) {
-            // Clear Layer
-            self.Layers.ItemsContext.clearRect(0, 0, self.Layers.Items.width, self.Layers.Items.width);
-
-            // Draw Guide
-            drawGuide(self.Layers.ItemsContext, currentLevel.Data);
-
-            // Draw Blocks
-            for (team = 1; team <= 4; team += 1) {
-                for (i = 0; i < Main.Team[team].Blocks.length; i += 1) {
-                    self.Layers.ItemsContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Blocks[i].y * self.STATIC.TILE_HEIGHT);
-                }
-            }
-
-            // Draw Mines
-            for (team = 1; team <= 4; team += 1) {
-                for (i = 0; i < Main.Team[team].Mines.length; i += 1) {
-                    self.Layers.ItemsContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Mines[i].y * self.STATIC.TILE_HEIGHT);
-                }
-            }
-
+            drawItems();
             self.ItemDraw = false;
         }
 
-        // Clear Entities Layer
-        self.Layers.EntitiesContext.clearRect(0, 0, self.Layers.Entities.width, self.Layers.Entities.width);
-
-        // Draw Bots
-        for (team = 1; team <= 4; team += 1) {
-            for (i = 0; i < Main.Team[team].Bots.length; i += 1) {
-                drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Bot_Template, Main.Team[team].Bots[i].x, Main.Team[team].Bots[i].y, Main.Team[team].Bots[i].r);
-            }
-        }
-
-        // Draw Characters
-        for (team = 1; team <= 4; team += 1) {
-            drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Character_Template, Math.floor(Main.Team[team].Player.x), Math.floor(Main.Team[team].Player.y), Main.Team[team].Player.r);
-        }
-
-        // Draw Explosions
-        for (i = 0; i < self.Explosions.length; i += 1) {
-            self.Layers.EntitiesContext.drawImage(Main.Team[self.Explosions[i].team].Explosion_Template,
-                                    self.Explosions[i].x * self.STATIC.TILE_WIDTH - Main.Team[self.Explosions[i].team].Explosion_Template.width / 2 + self.STATIC.TILE_WIDTH / 2,
-                                    self.Explosions[i].y * self.STATIC.TILE_HEIGHT - Main.Team[self.Explosions[i].team].Explosion_Template.height / 2 + self.STATIC.TILE_HEIGHT / 2);
-        }
+        // Draw Entities every frame
+        drawEntities();
 
         // Draw Interface
+        if (self.InterfaceDraw) {
+            drawInterface();
+            self.InterfaceDraw = false;
+        }
     };
 
     self.tintImage = function (imgElement, tintColour) {
@@ -994,6 +970,94 @@ var Main = (function () {
                 previousTile = currentTile;
             }
         }
+    };
+
+    drawItems = function () {
+        var i,
+            team;
+
+        // Clear Layer
+        self.Layers.ItemsContext.clearRect(0, 0, self.Layers.Items.width, self.Layers.Items.width);
+
+        // Draw Guide
+        drawGuide(self.Layers.ItemsContext, currentLevel.Data);
+
+        // Draw Blocks
+        for (team = 1; team <= 4; team += 1) {
+            for (i = 0; i < Main.Team[team].Blocks.length; i += 1) {
+                self.Layers.ItemsContext.drawImage(Main.Team[team].Block_Template, Main.Team[team].Blocks[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Blocks[i].y * self.STATIC.TILE_HEIGHT);
+            }
+        }
+
+        // Draw Mines
+        for (team = 1; team <= 4; team += 1) {
+            for (i = 0; i < Main.Team[team].Mines.length; i += 1) {
+                self.Layers.ItemsContext.drawImage(Main.Team[team].Mine_Template, Main.Team[team].Mines[i].x * self.STATIC.TILE_WIDTH, Main.Team[team].Mines[i].y * self.STATIC.TILE_HEIGHT);
+            }
+        }
+    };
+
+    drawEntities = function () {
+        var i,
+            team;
+
+        // Clear Entities Layer
+        self.Layers.EntitiesContext.clearRect(0, 0, self.Layers.Entities.width, self.Layers.Entities.width);
+
+        // Draw Bots
+        for (team = 1; team <= 4; team += 1) {
+            for (i = 0; i < Main.Team[team].Bots.length; i += 1) {
+                drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Bot_Template, Main.Team[team].Bots[i].x, Main.Team[team].Bots[i].y, Main.Team[team].Bots[i].r);
+            }
+        }
+
+        // Draw Characters
+        for (team = 1; team <= 4; team += 1) {
+            drawRotatedImage(self.Layers.EntitiesContext, Main.Team[team].Character_Template, Math.floor(Main.Team[team].Player.x), Math.floor(Main.Team[team].Player.y), Main.Team[team].Player.r);
+        }
+
+        // Draw Explosions
+        for (i = 0; i < self.Explosions.length; i += 1) {
+            self.Layers.EntitiesContext.drawImage(Main.Team[self.Explosions[i].team].Explosion_Template,
+                                    self.Explosions[i].x * self.STATIC.TILE_WIDTH - Main.Team[self.Explosions[i].team].Explosion_Template.width / 2 + self.STATIC.TILE_WIDTH / 2,
+                                    self.Explosions[i].y * self.STATIC.TILE_HEIGHT - Main.Team[self.Explosions[i].team].Explosion_Template.height / 2 + self.STATIC.TILE_HEIGHT / 2);
+        }
+    };
+
+    drawInterface = function () {
+        self.Layers.InterfaceContext.lineWidth = 2;
+
+        // Team 1
+        // Background
+        self.Layers.InterfaceContext.beginPath();
+        self.Layers.InterfaceContext.strokeStyle = "#000000";
+        self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH / 2, 1);
+        self.Layers.InterfaceContext.lineTo(1, 1);
+        self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT / 2);
+        self.Layers.InterfaceContext.stroke();
+        // Foreground
+        self.Layers.InterfaceContext.beginPath();
+        self.Layers.InterfaceContext.strokeStyle = self.Team[1].Colour;
+        self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH / 2, 1);
+        self.Layers.InterfaceContext.lineTo(Math.floor(self.STATIC.SCREEN_WIDTH / 2 * (1 - Math.min(self.Team[1].Score / (self.Team[1].TargetScore / 2), 1))), 1);
+        self.Layers.InterfaceContext.stroke();
+        if (self.Team[1].Score > self.Team[1].TargetScore / 2) {
+            self.Layers.InterfaceContext.moveTo(1, 1);
+            self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT / 2 * Math.max((self.Team[1].Score - self.Team[1].TargetScore / 2) / (self.Team[1].TargetScore / 2), 0));
+            self.Layers.InterfaceContext.stroke();
+        }
+
+        // Team 2
+        // Background
+        // Foreground
+
+        // Team 3
+        // Background
+        // Foreground
+
+        // Team 4
+        // Background
+        // Foreground
     };
 
     lerp = function (start, end, percent) {
