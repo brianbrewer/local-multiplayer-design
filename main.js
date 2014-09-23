@@ -206,6 +206,7 @@ var Main = (function () {
             } else {
                 //console.log("Un-Pause");
                 self.Paused = false;
+                previousTime = currentTime = Date.now();
             }
         }, false);
 
