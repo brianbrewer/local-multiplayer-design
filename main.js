@@ -36,8 +36,8 @@ var Main = (function () {
     self.InterfaceDraw = true;
     self.Team = {
         1: {
-            Colour: "#cccccc",
-            Score: 45,
+            Colour: "#ff0000",
+            Score: 0,
             TargetScore: 60,
             Player: {
                 x: 0,
@@ -201,10 +201,10 @@ var Main = (function () {
 
         document.addEventListener(visibilityChange, function () {
             if (document[hidden]) {
-                console.log("Pause");
+                //console.log("Pause");
                 self.Paused = true;
             } else {
-                console.log("Un-Pause");
+                //console.log("Un-Pause");
                 self.Paused = false;
             }
         }, false);
@@ -429,7 +429,6 @@ var Main = (function () {
                     }
                 }
                 //Collision
-                //@TODO: Take into consideration the existence of blocks from other players
                 currentTileX = Math.floor(Main.Team[player].Player.x / Main.STATIC.TILE_WIDTH);
                 currentTileY = Math.floor(Main.Team[player].Player.y / Main.STATIC.TILE_HEIGHT);
                 playerTileX = Math.floor((Main.Team[player].Player.x + vx * 48 / 1000 * delta) / Main.STATIC.TILE_WIDTH);
@@ -491,6 +490,16 @@ var Main = (function () {
                 for (i = 0; i < Main.Team[team].Bots.length; i += 1) {
                     // Remove if no more steps
                     if (Main.Team[team].Bots[i].i > Main.Team[team].Bots[i].Route.length - 1) {
+                        // Check if end is goal
+                        if (Math.floor(Main.Team[team].Bots[i].sx / self.STATIC.TILE_WIDTH)  === currentLevel.Point["End" + team].x && Math.floor(Main.Team[team].Bots[i].sy / self.STATIC.TILE_HEIGHT) === currentLevel.Point["End" + team].y) {
+                            Main.Team[team].Score += 1;
+                            self.InterfaceDraw = true;
+
+                            // Check if Winner!
+                            //@TODO: That ^
+                        }
+
+                        // Remove
                         Main.Team[team].Bots.splice(i, 1);
                         break;
                     }
@@ -543,7 +552,6 @@ var Main = (function () {
             }
 
             // Explosion Updates
-            //@TODO: Finish!
             for (i = 0; i < Main.Explosions.length; i += 1) {
                 Main.Explosions[i].t -= delta;
                 if (Main.Explosions[i].t <= 0) {
@@ -1025,45 +1033,72 @@ var Main = (function () {
     };
 
     drawInterface = function () {
+        // Setup
+        //@TODO: Move to work with only one pop
         self.Layers.InterfaceContext.lineWidth = 2;
 
-        // Team 1
         // Background
         self.Layers.InterfaceContext.beginPath();
         self.Layers.InterfaceContext.strokeStyle = "#000000";
-        self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH / 2, 1);
-        self.Layers.InterfaceContext.lineTo(1, 1);
-        self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT / 2);
+        self.Layers.InterfaceContext.rect(1, 1, self.STATIC.SCREEN_HEIGHT - 2, self.STATIC.SCREEN_HEIGHT - 2);
         self.Layers.InterfaceContext.stroke();
-        // Foreground
+
+        // Team 1
         self.Layers.InterfaceContext.beginPath();
         self.Layers.InterfaceContext.strokeStyle = self.Team[1].Colour;
         self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH / 2, 1);
-        self.Layers.InterfaceContext.lineTo(Math.floor(self.STATIC.SCREEN_WIDTH / 2 * (1 - Math.min(self.Team[1].Score / (self.Team[1].TargetScore / 2), 1))), 1);
-        self.Layers.InterfaceContext.stroke();
+        self.Layers.InterfaceContext.lineTo(Math.floor(self.STATIC.SCREEN_WIDTH / 2 + self.STATIC.SCREEN_WIDTH / 2 * Math.min(self.Team[1].Score / (self.Team[1].TargetScore / 2), 1)) - 1, 1);
         if (self.Team[1].Score > self.Team[1].TargetScore / 2) {
-            self.Layers.InterfaceContext.moveTo(1, 1);
-            self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT / 2 * Math.max((self.Team[1].Score - self.Team[1].TargetScore / 2) / (self.Team[1].TargetScore / 2), 0));
+            self.Layers.InterfaceContext.lineTo(self.STATIC.SCREEN_WIDTH - 1, Math.floor(self.STATIC.SCREEN_HEIGHT / 2 * Math.max((self.Team[1].Score - self.Team[1].TargetScore / 2) / (self.Team[1].TargetScore / 2), 0)));
+            self.Layers.InterfaceContext.stroke();
+        } else {
             self.Layers.InterfaceContext.stroke();
         }
 
         // Team 2
-        // Background
-        // Foreground
+        self.Layers.InterfaceContext.beginPath();
+        self.Layers.InterfaceContext.strokeStyle = self.Team[2].Colour;
+        self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH - 1, self.STATIC.SCREEN_HEIGHT / 2);
+        self.Layers.InterfaceContext.lineTo(self.STATIC.SCREEN_WIDTH - 1, Math.floor(self.STATIC.SCREEN_HEIGHT / 2 + self.STATIC.SCREEN_HEIGHT / 2 * Math.min(self.Team[2].Score / (self.Team[2].TargetScore / 2), 1) - 1));
+        if (self.Team[2].Score > self.Team[2].TargetScore / 2) {
+            self.Layers.InterfaceContext.lineTo(self.STATIC.SCREEN_WIDTH - 1 - (self.STATIC.SCREEN_WIDTH / 2 * Math.min((self.Team[2].Score - self.Team[2].TargetScore / 2) / (self.Team[2].TargetScore / 2), 1)), self.STATIC.SCREEN_HEIGHT - 1);
+            self.Layers.InterfaceContext.stroke();
+        } else {
+            self.Layers.InterfaceContext.stroke();
+        }
 
         // Team 3
-        // Background
-        // Foreground
+        self.Layers.InterfaceContext.beginPath();
+        self.Layers.InterfaceContext.strokeStyle = self.Team[3].Colour;
+        self.Layers.InterfaceContext.moveTo(self.STATIC.SCREEN_WIDTH / 2, self.STATIC.SCREEN_HEIGHT - 1);
+        self.Layers.InterfaceContext.lineTo(self.STATIC.SCREEN_WIDTH / 2 * Math.max(1 - (self.Team[3].Score / (self.Team[3].TargetScore / 2)), 0) + 1, self.STATIC.SCREEN_HEIGHT - 1);
+        if (self.Team[3].Score > self.Team[3].TargetScore / 2) {
+            self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT - 1 - (self.STATIC.SCREEN_HEIGHT / 2 * Math.min((self.Team[3].Score - self.Team[3].TargetScore / 2) / (self.Team[3].TargetScore / 2), 1)));
+            self.Layers.InterfaceContext.stroke();
+        } else {
+            self.Layers.InterfaceContext.stroke();
+        }
 
         // Team 4
-        // Background
-        // Foreground
+        self.Layers.InterfaceContext.beginPath();
+        self.Layers.InterfaceContext.strokeStyle = self.Team[4].Colour;
+        self.Layers.InterfaceContext.moveTo(1, self.STATIC.SCREEN_HEIGHT / 2);
+        self.Layers.InterfaceContext.lineTo(1, self.STATIC.SCREEN_HEIGHT / 2 * Math.max(1 - (self.Team[4].Score / (self.Team[4].TargetScore / 2)), 0) + 1);
+        if (self.Team[4].Score > self.Team[4].TargetScore / 2) {
+            self.Layers.InterfaceContext.lineTo(Math.floor(self.STATIC.SCREEN_WIDTH / 2 * Math.min((self.Team[4].Score - self.Team[4].TargetScore / 2) / (self.Team[4].TargetScore / 2), 1)), 1);
+            self.Layers.InterfaceContext.stroke();
+        } else {
+            self.Layers.InterfaceContext.stroke();
+        }
     };
 
     lerp = function (start, end, percent) {
         return start + percent * (end - start);
     };
 
+    //@TODO: Implement a way of stopping every single bot from updating guide when placing objects
+    //@TODO: Maybe stop players from placing blocks on bots
+    // Currently only doing at maximum 1 per second
     calculateGuide = function () {
         var team;
 
